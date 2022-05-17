@@ -11,7 +11,7 @@ cluster_pickle_filename = 'data/cluster.pickle' # Location of the clustering pic
 
 
 # HDBSCAN parameters
-minimum_cluster_size = 1000 # Minimum number of data points per cluster.
+minimum_cluster_size = 500 # Minimum number of data points per cluster.
 minimum_samples = minimum_cluster_size
 cluster_selection_epsilon = 0
 

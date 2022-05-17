@@ -31,6 +31,19 @@ if __name__ == '__main__':
     dec_ss = get_column(6, str, params.virgo_filename, skip_header=2)
     V_H = get_column(8, float, params.virgo_filename, skip_header=2)
     V_H_err = get_column(9, float, params.virgo_filename, skip_header=2)
+    print ("Initial number of clusters:", len(V_H))
+    
+    # Apply the radial velocity cut.
+    indeces = np.where(V_H>0)[0]
+    ra_hh = ra_hh[indeces]
+    ra_mm = ra_mm[indeces]
+    ra_ss = ra_ss[indeces]
+    dec_dd = dec_dd[indeces]
+    dec_mm = dec_mm[indeces]
+    dec_ss = dec_ss[indeces]
+    V_H = V_H[indeces]
+    V_H_err = V_H_err[indeces]
+    print ("Number of clusters after the radial velocity cut:", len(V_H))
     
     # Convert RA and DEC into the proper format.
     RA = np.array([RA_to_hours (a, b, c) for a, b, c in zip(ra_hh, ra_mm, ra_ss)])
@@ -42,13 +55,15 @@ if __name__ == '__main__':
     V_H_scaled = (V_H-np.mean(V_H))/np.std(V_H)
     data_array = np.array([RA_scaled, DEC_scaled, V_H_scaled]).T
     
-    # Define the negative log-likelihood function for our dataset. x is an array in which the first n elements are the mean vector and the subsequent n^2 elements are the covariance matrix.
+    # Define the negative log-likelihood function for our dataset. x is an array in which the first n elements are the mean vector and the subsequent n(n-1) elements are the covariance matrix.
     def neg_log_likelihood (x):
-        return -sum([multivariate_normal.logpdf(data_array[i], x[0:3], x[3:].reshape((3,3))) for i in range(len(data_array))])
+        mean = x[0:3]
+        sigma = np.array([[x[3], x[4], x[5]], [x[4], x[6], x[7]], [x[5], x[7], x[8]]])
+        return -sum([multivariate_normal.logpdf(data_array[i], mean, sigma) for i in range(len(data_array))])
         
     # Use the BFGS method to maximize the log-likelihood. Print out the results of the maximization.
     length = len(data_array[0])
-    center = minimize(neg_log_likelihood, np.array(list(np.zeros(length))+list(np.identity(length).flatten())), method='L-BFGS-B', options={'maxiter': 20, 'gtol': 1e-6, 'disp': True}).x
+    center = minimize(neg_log_likelihood, np.array(list(np.zeros(length))+[1,0,0,1,0,1]), method='L-BFGS-B', options={'maxiter': 20, 'gtol': 1e-6, 'disp': True}).x
     print ("")
     print ("")
     print ("Center coordinates:")
@@ -56,7 +71,7 @@ if __name__ == '__main__':
     print ("DEC:", center[1]*np.std(DEC)+np.mean(DEC))
     print ("V_H:", center[2]*np.std(V_H)+np.mean(V_H), "km/s")
     mu = center[0:3]
-    sigma = center[3:].reshape((3,3))
+    sigma = np.array([[center[3], center[4], center[5]], [center[4], center[6], center[7]], [center[5], center[7], center[8]]])
     print ("Mean vector:", mu)
     print ("Covariance matrix:", sigma)
     
